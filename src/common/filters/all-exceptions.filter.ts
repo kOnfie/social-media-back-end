@@ -39,6 +39,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: string | object = 'Internal server error';
 
+    const stack: string | undefined =
+      exception instanceof Error ? exception.stack : undefined;
+
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       message = exception.getResponse();
@@ -50,10 +53,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
         status = pgError.status;
         message = pgError.msg;
       }
+
+      this.logger.error(`Postgres error detail: ${error.detail}`);
     }
 
     this.logger.error(
       `[${request.method}] ${request.url} - Status: ${status} - Error: ${JSON.stringify(message)}`,
+      stack,
     );
 
     response.status(status).json({

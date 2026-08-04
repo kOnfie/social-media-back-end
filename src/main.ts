@@ -4,11 +4,24 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 
+import cookieParser from 'cookie-parser';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  app.useGlobalPipes(new ValidationPipe());
+  app.use(cookieParser());
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      // не пропускає дані яких немає у DTO при запиті
+      whitelist: true,
+      // кидає 400 помилку якщо є дані яких немає у DTO при запиті
+      forbidNonWhitelisted: true,
+      // перетворює об'єкт з plain JSON-object одразу на інстанс класу DTO
+      transform: true,
+    }),
+  );
 
   app.setGlobalPrefix('api/v1');
 

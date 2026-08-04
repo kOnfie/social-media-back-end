@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Session } from './entities/session.entity';
 import { MoreThan, Repository } from 'typeorm';
@@ -37,5 +37,40 @@ export class SessionService {
     });
 
     return !!session;
+  }
+
+  async findSessionByToken(token: string): Promise<Session | null> {
+    const session = await this.sessionRespository.findOneBy({ token });
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    return session;
+  }
+
+  async findValidSessionByToken(token: string): Promise<Session | null> {
+    const session = await this.sessionRespository.findOne({
+      where: { token },
+      relations: { user: true },
+    });
+    if (!session) {
+      return null;
+    }
+
+    const now = new Date();
+    if (now.getTime() > session.expiredAt.getTime()) {
+      await this.sessionRespository.delete({ token });
+      return null;
+    }
+
+    return session;
+  }
+
+  async deleteSessionByToken(token: string): Promise<void> {
+    await this.sessionRespository.delete({ token });
+  }
+
+  async deleteAllSessions(userId: string) {
+    await this.sessionRespository.delete({ user: { id: userId } });
   }
 }

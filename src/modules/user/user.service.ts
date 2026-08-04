@@ -11,6 +11,13 @@ export class UserService {
     @InjectRepository(User) private readonly userRepository: Repository<User>,
   ) {}
 
+  async findById(id: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { id },
+      relations: { sessions: true },
+    });
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOneBy({ email });
   }
@@ -30,10 +37,8 @@ export class UserService {
   async updateUser(
     userId: string,
     updateUserDto: Partial<UpdateUserDto>,
-  ): Promise<User | null> {
+  ): Promise<void> {
     await this.userRepository.update({ id: userId }, { ...updateUserDto });
-
-    return this.userRepository.findOneBy({ id: userId });
   }
 
   async updateUserByEmail(

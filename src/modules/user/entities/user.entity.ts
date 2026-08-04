@@ -1,5 +1,5 @@
 import { Exclude } from 'class-transformer';
-import { Session } from 'src/session/entities/session.entity';
+import { Session } from 'src/modules/session/entities/session.entity';
 import {
   Column,
   CreateDateColumn,
@@ -15,11 +15,11 @@ export class User {
   id!: string;
 
   @Column({ unique: true })
-  email?: string;
+  email!: string;
 
-  @Column({ select: false })
+  @Column()
   @Exclude()
-  passwordHash?: string;
+  passwordHash!: string;
 
   @Column({ default: false })
   isVerified!: boolean;
@@ -30,7 +30,7 @@ export class User {
   @CreateDateColumn()
   createdAt!: Date;
 
-  @UpdateDateColumn({ select: false })
+  @UpdateDateColumn()
   @Exclude()
   updatedAt!: Date;
 }
