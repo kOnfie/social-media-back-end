@@ -40,4 +40,7 @@ export class UserResponseDto {
   // })
   @Expose()
   createdAt!: Date;
+
+  @Expose()
+  isPrivate!: boolean;
 }

@@ -24,9 +24,6 @@ export class User {
   @Column({ default: false })
   isVerified!: boolean;
 
-  @OneToMany(() => Session, (session) => session.user)
-  sessions!: Session[];
-
   @Column({ unique: true, nullable: true })
   username?: string;
 
@@ -39,10 +36,16 @@ export class User {
   @Column({ nullable: true, type: 'text' })
   bio?: string;
 
+  @Column({ nullable: true, default: false })
+  isPrivate?: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 
   @UpdateDateColumn()
   @Exclude()
   updatedAt!: Date;
+
+  @OneToMany(() => Session, (session) => session.user)
+  sessions!: Session[];
 }

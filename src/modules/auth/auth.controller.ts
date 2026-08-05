@@ -220,6 +220,7 @@ export class AuthController {
 
   @UseGuards(AuthGuard)
   @Post('/logout')
+  @HttpCode(200)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const sessionToken = req.sessionToken as string;
 

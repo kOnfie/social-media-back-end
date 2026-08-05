@@ -13,7 +13,7 @@ export class ConflictResponseDto {
 
   @ApiProperty({
     example: '/api/v1/',
-    description: 'Path when error was catch',
+    description: 'Path where the error was caught',
   })
   path!: string;
 
