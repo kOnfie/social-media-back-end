@@ -8,7 +8,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { SignupUserDto } from './dto/signup-user.dto';
+import { SignupUserDto } from './dto/signup/signup-user.dto';
 
 import { UserService } from 'src/modules/user/user.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -24,10 +24,10 @@ import {
 } from 'src/common/providers/mail/mail.interface';
 
 import { User } from 'src/modules/user/entities/user.entity';
-import { VerifyUserDto } from './dto/verify-user.dto';
-import { ResendVerificationCodeDto } from './dto/resend-verification-code.dto';
+import { VerifyUserDto } from './dto/verify-email/verify-user.dto';
+import { ResendVerificationCodeDto } from './dto/resend-code/resend-verification-code.dto';
 import { SessionService } from 'src/modules/session/session.service';
-import { LoginUserDto } from './dto/login-user.dto';
+import { LoginUserDto } from './dto/login/login-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { Session } from '../session/entities/session.entity';
 import { ConfigService } from '@nestjs/config';
@@ -108,7 +108,9 @@ export class AuthService {
       if (userExists.isVerified) {
         throw new ConflictException('Invalid credentials');
       } else {
-        const saltRounds = this.configService.get<number>('SALT_ROUNDS') ?? 12;
+        const saltRounds = Number(
+          this.configService.get<number>('SALT_ROUNDS') ?? 12,
+        );
         const newPasswordHash = await bcrypt.hash(password, saltRounds);
 
         await this.userService.updateUser(userExists.id, {

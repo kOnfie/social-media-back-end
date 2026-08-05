@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 
 import cookieParser from 'cookie-parser';
+import { InternalServerErrorResponseDto } from './modules/auth/dto/internal-server-error-response.dto';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -31,10 +32,16 @@ async function bootstrap() {
       .setTitle('Social Media Backend')
       .setDescription('REST API for Social Media')
       .setVersion('1.0')
+      .addGlobalResponse({
+        status: 500,
+        description: 'Internal server error',
+        type: InternalServerErrorResponseDto,
+      })
       .build();
 
     const documentFactory = () =>
       SwaggerModule.createDocument(app, swaggerConfig);
+
     SwaggerModule.setup('api/docs', app, documentFactory);
   }
 
