@@ -1,10 +1,30 @@
-import { IsBoolean, IsNotEmpty, Min } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class UpdateUserDto {
-  @IsNotEmpty()
-  @Min(8)
-  passwordHash!: string;
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(50)
+  username?: string;
 
-  @IsBoolean()
-  isVerified!: boolean;
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(80)
+  displayName?: string;
+
+  @IsOptional()
+  @IsUrl()
+  avatarUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(280)
+  bio?: string;
 }

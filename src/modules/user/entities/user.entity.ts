@@ -27,6 +27,18 @@ export class User {
   @OneToMany(() => Session, (session) => session.user)
   sessions!: Session[];
 
+  @Column({ unique: true, nullable: true })
+  username?: string;
+
+  @Column({ nullable: true })
+  displayName?: string;
+
+  @Column({ nullable: true })
+  avatarUrl?: string;
+
+  @Column({ nullable: true, type: 'text' })
+  bio?: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 

@@ -113,9 +113,10 @@ export class AuthService {
         );
         const newPasswordHash = await bcrypt.hash(password, saltRounds);
 
-        await this.userService.updateUser(userExists.id, {
-          passwordHash: newPasswordHash,
-        });
+        await this.userService.updateUserPasswordHash(
+          userExists.id,
+          newPasswordHash,
+        );
         const updatedUser = await this.userService.findByEmail(email);
 
         try {
@@ -194,9 +195,8 @@ export class AuthService {
     }
 
     try {
-      await this.userService.updateUserByEmail(email, {
-        isVerified: true,
-      });
+      await this.userService.updateUserVerifyByEmail(email, true);
+
       await this.cacheManager.del(`verification:${email}`);
     } catch (error) {
       this.logger.error(

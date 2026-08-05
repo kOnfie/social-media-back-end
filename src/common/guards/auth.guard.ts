@@ -10,7 +10,7 @@ import { extractSessionToken } from 'src/common/http/extract-session-token';
 import { SessionService } from 'src/modules/session/session.service';
 
 @Injectable()
-export class SessionAuthGuard implements CanActivate {
+export class AuthGuard implements CanActivate {
   constructor(private sessionService: SessionService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

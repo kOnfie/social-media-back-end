@@ -3,26 +3,24 @@ import type { Request, Response } from 'express';
 import {
   Body,
   Controller,
-  Get,
   HttpCode,
   Post,
   Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
 
 import { AuthService } from './auth.service';
 import { AuthSessionCookies } from './auth-session-cookies.service';
 
 import { User } from 'src/modules/user/entities/user.entity';
 
-import { UserResponseDto } from './dto/user-response.dto';
+import { UserResponseDto } from '../user/dto/response/user-response.dto';
 import { ResendVerificationCodeDto } from './dto/resend-code/resend-verification-code.dto';
 import { LoginUserDto } from './dto/login/login-user.dto';
 import { SignupUserDto } from './dto/signup/signup-user.dto';
 import { VerifyUserDto } from './dto/verify-email/verify-user.dto';
-import { SessionAuthGuard } from './guards/session-auth.guard';
+import { AuthGuard } from '../../common/guards/auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -36,6 +34,7 @@ import { ConflictResponseDto } from './dto/conflict-response.dto';
 import { VerifyUserResponseDto } from './dto/verify-email/verify-user-response.dto';
 import { ResendCodeResponseDto } from './dto/resend-code/resend-code-response.dto';
 import { LoginUserResponseDto } from './dto/login/login-user-response.dto';
+import { UserPresenter } from '../user/user.presenter';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -44,12 +43,11 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly authSessionCookies: AuthSessionCookies,
     private readonly configService: ConfigService,
+    private readonly userPresenter: UserPresenter,
   ) {}
 
   private toUserResponse(user: User | null): UserResponseDto {
-    return plainToInstance(UserResponseDto, user, {
-      excludeExtraneousValues: true,
-    });
+    return this.userPresenter.toResponse(user);
   }
 
   @Post('/signup')
@@ -150,7 +148,7 @@ export class AuthController {
     return { user: userResponse, message: 'User loggined in' };
   }
 
-  @UseGuards(SessionAuthGuard)
+  @UseGuards(AuthGuard)
   @Post('/change-password')
   async changePassword(
     @Res({ passthrough: true }) res: Response,
@@ -220,7 +218,7 @@ export class AuthController {
     };
   }
 
-  @UseGuards(SessionAuthGuard)
+  @UseGuards(AuthGuard)
   @Post('/logout')
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const sessionToken = req.sessionToken as string;
@@ -230,11 +228,5 @@ export class AuthController {
     this.authSessionCookies.clearSessionCookie(res);
 
     return { message: 'User logged out' };
-  }
-
-  @UseGuards(SessionAuthGuard)
-  @Get('/me')
-  getMe(@CurrentUser() user: User) {
-    return this.toUserResponse(user ?? null);
   }
 }

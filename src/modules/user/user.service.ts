@@ -36,9 +36,18 @@ export class UserService {
 
   async updateUser(
     userId: string,
-    updateUserDto: Partial<UpdateUserDto>,
-  ): Promise<void> {
-    await this.userRepository.update({ id: userId }, { ...updateUserDto });
+    updateUserDto: UpdateUserDto,
+  ): Promise<User | null> {
+    const user = await this.findById(userId);
+    if (!user) return null;
+
+    this.userRepository.merge(user, updateUserDto);
+
+    return this.userRepository.save(user);
+  }
+
+  async updateUserPasswordHash(userId: string, passwordHash: string) {
+    await this.userRepository.update({ id: userId }, { passwordHash });
   }
 
   async updateUserByEmail(
@@ -46,5 +55,12 @@ export class UserService {
     updateUserDto: Partial<UpdateUserDto>,
   ): Promise<void> {
     await this.userRepository.update({ email }, { ...updateUserDto });
+  }
+
+  async updateUserVerifyByEmail(email: string, isVerified: boolean) {
+    const user = await this.findByEmail(email);
+    if (!user) return null;
+
+    await this.userRepository.update({ email }, { isVerified });
   }
 }
