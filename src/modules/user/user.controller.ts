@@ -92,4 +92,12 @@ export class UserController {
       return this.userPresenter.toPublicResponse(user);
     }
   }
+
+  @Get('/username/:username')
+  async getUserByUsername(
+    @Param('username') username: string,
+  ): Promise<UserResponseDto> {
+    const user = await this.userService.findUserByUsername(username);
+    return this.userPresenter.toResponse(user);
+  }
 }

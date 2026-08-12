@@ -14,7 +14,7 @@ export class UserService {
   async findById(id: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { id },
-      relations: { sessions: true },
+      relations: { sessions: true, followers: true, following: true },
     });
   }
 
@@ -62,5 +62,9 @@ export class UserService {
     if (!user) return null;
 
     await this.userRepository.update({ email }, { isVerified });
+  }
+
+  findUserByUsername(username: string): Promise<User | null> {
+    return this.userRepository.findOneBy({ username });
   }
 }

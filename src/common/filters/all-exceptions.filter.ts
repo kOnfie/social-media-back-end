@@ -21,7 +21,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const postgresErrorCodes: Record<string, { status: number; msg: string }> =
       {
-        '23505': { status: HttpStatus.CONFLICT, msg: 'Запис вже існує' },
+        '23505': { status: HttpStatus.CONFLICT, msg: 'Record already exists' },
         '23503': {
           status: HttpStatus.BAD_REQUEST,
           msg: 'Помилка зв’язків у базі',

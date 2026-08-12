@@ -10,6 +10,7 @@ import { CacheModule } from '@nestjs/cache-manager';
 import KeyvRedis from '@keyv/redis';
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { FollowModule } from './modules/follow/follow.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     AuthModule,
     UserModule,
     SessionModule,
+    FollowModule,
   ],
   controllers: [AppController],
   providers: [

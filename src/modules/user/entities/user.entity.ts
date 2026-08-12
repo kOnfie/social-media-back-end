@@ -1,4 +1,5 @@
 import { Exclude } from 'class-transformer';
+import { Follow } from 'src/modules/follow/entities/follow.entity';
 import { Session } from 'src/modules/session/entities/session.entity';
 import {
   Column,
@@ -48,4 +49,10 @@ export class User {
 
   @OneToMany(() => Session, (session) => session.user)
   sessions!: Session[];
+
+  @OneToMany(() => Follow, (follow) => follow.follower)
+  following!: Follow[];
+
+  @OneToMany(() => Follow, (follow) => follow.followee)
+  followers!: Follow[];
 }
