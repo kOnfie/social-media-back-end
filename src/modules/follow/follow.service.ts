@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Follow, FollowStatus } from './entities/follow.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserService } from '../user/user.service';
@@ -54,13 +54,17 @@ export class FollowService {
   }
 
   async getPendingFollowRequests(userId: string): Promise<Follow[]> {
-    return this.followRepository.find({
+    const pendingRequests = await this.followRepository.find({
       where: { followee: { id: userId }, status: FollowStatus.PENDING },
       relations: { follower: true },
     });
+
+    return pendingRequests.map((req) => {
+      return { ...req, user: req.follower };
+    });
   }
 
-  async subscribe(userId: string, followeeId: string): Promise<Follow | null> {
+  async subscribe(userId: string, followeeId: string) {
     if (userId === followeeId) {
       throw new ConflictException('You cannot subscribe to yourself');
     }
@@ -86,7 +90,7 @@ export class FollowService {
       );
     }
 
-    return follow;
+    return { ...follow, user: follow.followee };
   }
 
   async unSubscribe(userId: string, followeeId: string) {
@@ -102,17 +106,38 @@ export class FollowService {
     await this.deleteFollow(followeeExists.id);
   }
 
-  getMyFollowers(userId: string): Promise<Follow[]> {
-    return this.followRepository.find({
+  async getMyFollowers(userId: string): Promise<Follow[]> {
+    const followers = await this.followRepository.find({
       where: { followee: { id: userId }, status: FollowStatus.ACCEPTED },
       relations: { follower: true },
     });
+
+    const followersIds = followers.map((follower) => follower.follower.id);
+
+    const userFollowees = await this.followRepository.find({
+      where: { follower: { id: userId }, followee: { id: In(followersIds) } },
+      relations: { followee: true },
+    });
+
+    const userFolloweeIds = new Set(userFollowees.map((f) => f.followee.id));
+
+    return followers.map((follower) => {
+      return {
+        ...follower,
+        user: follower.follower,
+        isFollowee: userFolloweeIds.has(follower.follower.id),
+      };
+    });
   }
 
-  getMyFollowees(userId: string): Promise<Follow[]> {
-    return this.followRepository.find({
+  async getMyFollowees(userId: string): Promise<Follow[]> {
+    const followees = await this.followRepository.find({
       where: { follower: { id: userId }, status: FollowStatus.ACCEPTED },
       relations: { followee: true },
+    });
+
+    return followees.map((followee) => {
+      return { ...followee, user: followee.followee };
     });
   }
 

@@ -35,7 +35,7 @@ export class FollowController {
 
     return {
       message: 'User subscribed',
-      follow: this.followPresenter.toResponse(newFollow),
+      follow: this.followPresenter.toFolloweeResponse(newFollow),
     };
   }
 
@@ -54,7 +54,7 @@ export class FollowController {
   async myFollowers(@CurrentUser('id') userId: string) {
     const followers = await this.followService.getMyFollowers(userId);
     const formattedFollowers = followers.map((follower) =>
-      this.followPresenter.toResponse(follower),
+      this.followPresenter.toFollowerResponse(follower),
     );
 
     return { followers: formattedFollowers };
@@ -65,7 +65,7 @@ export class FollowController {
   async myFollowee(@CurrentUser('id') userId: string) {
     const followees = await this.followService.getMyFollowees(userId);
     const formattedFollowees = followees.map((followee) =>
-      this.followPresenter.toResponse(followee),
+      this.followPresenter.toFolloweeResponse(followee),
     );
 
     return { followees: formattedFollowees };
@@ -97,7 +97,7 @@ export class FollowController {
     const subscriptions =
       await this.followService.getPendingFollowRequests(userId);
     const formattedSubscriptions = subscriptions.map((sub) =>
-      this.followPresenter.toResponse(sub),
+      this.followPresenter.toFollowerResponse(sub),
     );
 
     return { subscriptions: formattedSubscriptions };

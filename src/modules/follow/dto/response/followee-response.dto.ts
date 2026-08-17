@@ -3,7 +3,7 @@ import { Expose, Type } from 'class-transformer';
 import { FollowStatus } from '../../entities/follow.entity';
 import { FollowUserResponseDto } from './follow-user-response.dto';
 
-export class FollowResponseDto {
+export class FolloweeResponseDto {
   @Expose()
   id!: string;
 
@@ -11,13 +11,6 @@ export class FollowResponseDto {
   status!: FollowStatus;
 
   @Expose()
-  isFollowee!: boolean;
-
-  @Expose()
   @Type(() => FollowUserResponseDto)
-  follower!: FollowUserResponseDto;
-
-  @Expose()
-  @Type(() => FollowUserResponseDto)
-  followee!: FollowUserResponseDto;
+  user!: FollowUserResponseDto;
 }
