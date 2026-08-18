@@ -11,5 +11,14 @@ export class UserPrivateResponseDto {
   avatarUrl!: string;
 
   @Expose()
+  bio!: string;
+
+  @Expose()
   isPrivate!: boolean;
+
+  @Expose()
+  followerCount!: number;
+
+  @Expose()
+  followeeCount!: number;
 }

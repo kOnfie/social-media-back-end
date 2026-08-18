@@ -1,20 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ProfileDto } from './dto/profile.dto';
+import { FollowService } from '../follow/follow.service';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User) private readonly userRepository: Repository<User>,
+    @Inject(forwardRef(() => FollowService))
+    private followService: FollowService,
   ) {}
 
   async findById(id: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { id },
-      relations: { sessions: true, followers: true, following: true },
     });
   }
 
@@ -62,6 +65,22 @@ export class UserService {
     if (!user) return null;
 
     await this.userRepository.update({ email }, { isVerified });
+  }
+
+  async getProfileById(userId: string): Promise<ProfileDto | null> {
+    const user = await this.findById(userId);
+    if (!user) return null;
+
+    const [followerCount, followeeCount] = await Promise.all([
+      this.followService.countFollowers(user.id),
+      this.followService.countFollowees(user.id),
+    ]);
+
+    return {
+      ...user,
+      followerCount,
+      followeeCount,
+    };
   }
 
   findUserByUsername(username: string): Promise<User | null> {

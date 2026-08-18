@@ -1,6 +1,8 @@
 import {
   ConflictException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -15,8 +17,23 @@ export class FollowService {
   constructor(
     @InjectRepository(Follow)
     private readonly followRepository: Repository<Follow>,
+    @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
   ) {}
+
+  async countFollowers(userId: string): Promise<number> {
+    return this.followRepository.countBy({
+      followee: { id: userId },
+      status: FollowStatus.ACCEPTED,
+    });
+  }
+
+  async countFollowees(userId: string): Promise<number> {
+    return this.followRepository.countBy({
+      follower: { id: userId },
+      status: FollowStatus.ACCEPTED,
+    });
+  }
 
   async createFollow(
     followerId: string,

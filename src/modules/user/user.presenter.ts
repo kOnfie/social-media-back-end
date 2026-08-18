@@ -4,6 +4,7 @@ import { UserResponseDto } from './dto/response/user-response.dto';
 import { plainToInstance } from 'class-transformer';
 import { UserPublicResponseDto } from './dto/response/user-public-response.dto';
 import { UserPrivateResponseDto } from './dto/response/user-private-response.dto';
+import { ProfileDto } from './dto/profile.dto';
 
 @Injectable()
 export class UserPresenter {
@@ -13,13 +14,13 @@ export class UserPresenter {
     });
   }
 
-  toPublicResponse(user: User | null): UserPublicResponseDto {
+  toPublicResponse(user: User | ProfileDto | null): UserPublicResponseDto {
     return plainToInstance(UserPublicResponseDto, user, {
       excludeExtraneousValues: true,
     });
   }
 
-  toPrivateResponse(user: User | null): UserPrivateResponseDto {
+  toPrivateResponse(user: User | ProfileDto | null): UserPrivateResponseDto {
     return plainToInstance(UserPrivateResponseDto, user, {
       excludeExtraneousValues: true,
     });

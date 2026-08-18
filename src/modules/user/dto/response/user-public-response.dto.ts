@@ -18,4 +18,10 @@ export class UserPublicResponseDto {
 
   @Expose()
   isPrivate!: boolean;
+
+  @Expose()
+  followerCount!: number;
+
+  @Expose()
+  followeeCount!: number;
 }

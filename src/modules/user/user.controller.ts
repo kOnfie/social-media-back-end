@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   Patch,
@@ -37,7 +38,7 @@ export class UserController {
   }
 
   @Patch('/me/update')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiBody({ type: UpdateUserDto })
   @ApiResponse({
     status: 409,
@@ -58,30 +59,20 @@ export class UserController {
   }
 
   @Get(':id')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Get public user info',
-    description: 'Get public user info by id',
+    summary: 'Get profile info',
+    description: 'Get profile info by id',
   })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'Get public profile',
-  //   type: UserPublicResponseDto,
-  // })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'Get private profile',
-  //   type: UserPrivateResponseDto,
-  // })
   @ApiResponse({
     status: 404,
     description: 'User not found',
     type: NotFoundResponseDto,
   })
-  async getPublicProfileById(
+  async getProfileById(
     @Param('id') userId: string,
   ): Promise<UserPublicResponseDto | UserPrivateResponseDto> {
-    const user = await this.userService.findById(userId);
+    const user = await this.userService.getProfileById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
     }
