@@ -15,4 +15,7 @@ export class UserPublicResponseDto {
 
   @Expose()
   bio!: string;
+
+  @Expose()
+  isPrivate!: boolean;
 }

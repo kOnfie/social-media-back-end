@@ -9,4 +9,7 @@ export class UserPrivateResponseDto {
 
   @Expose()
   avatarUrl!: string;
+
+  @Expose()
+  isPrivate!: boolean;
 }
