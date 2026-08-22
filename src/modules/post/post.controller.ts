@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -13,10 +14,11 @@ import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { AuthGuard } from 'src/common/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PostResponseDto } from './dto/responses/post-response.dto';
 import { User } from '../user/entities/user.entity';
 import { PostPresenter } from './post.presenter';
+import { UpdatePostDto } from './dto/update-post.dto';
 
 @UseGuards(AuthGuard)
 @Controller('posts')
@@ -87,5 +89,25 @@ export class PostController {
     if (!post) return {};
 
     return this.postPresenter.toResponse(post);
+  }
+
+  @Patch('/:postId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update post',
+    description: 'Update post by postId',
+  })
+  async updatePost(
+    @CurrentUser('id') userId: string,
+    @Param('postId') postId: string,
+    @Body() updatePostDto: UpdatePostDto,
+  ) {
+    const updatedPost = await this.postService.updatePost(
+      postId,
+      userId,
+      updatePostDto,
+    );
+
+    return this.postPresenter.toResponse(updatedPost);
   }
 }

@@ -11,6 +11,8 @@ import { UserService } from '../user/user.service';
 import { FollowService } from '../follow/follow.service';
 import { FollowStatus } from '../follow/entities/follow.entity';
 
+import { UpdatePost } from './interfaces/update-post.type';
+
 @Injectable()
 export class PostService {
   constructor(
@@ -115,5 +117,22 @@ export class PostService {
     }
 
     return null;
+  }
+
+  async updatePost(postId: string, ownerId: string, updatePostDto: UpdatePost) {
+    const post = await this.findById(postId);
+
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
+
+    if (post.user.id !== ownerId) {
+      throw new ForbiddenException('You cannot update not your own post');
+    }
+
+    Object.assign(post, updatePostDto);
+    const updatedPost = this.postRepository.save(post);
+
+    return updatedPost;
   }
 }
