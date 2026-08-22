@@ -11,6 +11,7 @@ import KeyvRedis from '@keyv/redis';
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { FollowModule } from './modules/follow/follow.module';
+import { PostModule } from './modules/post/post.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { FollowModule } from './modules/follow/follow.module';
     UserModule,
     SessionModule,
     FollowModule,
+    PostModule,
   ],
   controllers: [AppController],
   providers: [
