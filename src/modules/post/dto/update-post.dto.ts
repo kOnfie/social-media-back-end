@@ -1,5 +1,4 @@
 import { IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
-
 export class UpdatePostDto {
   @IsOptional()
   @IsString()
@@ -7,3 +6,5 @@ export class UpdatePostDto {
   @MinLength(5)
   text?: string;
 }
+
+// export class UpdatePostDto extends PartialType(CreatePostDto) {}

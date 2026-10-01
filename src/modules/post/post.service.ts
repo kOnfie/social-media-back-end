@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Post } from './entities/post.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserService } from '../user/user.service';
@@ -134,5 +134,18 @@ export class PostService {
     const updatedPost = this.postRepository.save(post);
 
     return updatedPost;
+  }
+
+  async getFeed(userId: string) {
+    const myFollowee = await this.followService.getMyFollowees(userId);
+    const followeeIds = myFollowee.map((f) => f.followee.id);
+
+    console.log('followeeIds ->', JSON.stringify(followeeIds, null, 2));
+
+    const posts = await this.postRepository.find({
+      where: { user: { id: In(followeeIds) } },
+    });
+
+    console.log('posts ->', JSON.stringify(posts, null, 2));
   }
 }

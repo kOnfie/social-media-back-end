@@ -70,6 +70,11 @@ export class PostController {
     return posts.map((post) => this.postPresenter.toResponse(post));
   }
 
+  @Get('/feed')
+  async getFeed(@CurrentUser('id') userId: string) {
+    await this.postService.getFeed(userId);
+  }
+
   @Delete('/:postId')
   async delete(
     @CurrentUser('id') userId: string,
