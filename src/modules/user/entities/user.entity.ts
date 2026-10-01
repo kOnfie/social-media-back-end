@@ -35,7 +35,7 @@ export class User {
   @Column({ nullable: true })
   avatarUrl?: string;
 
-  @Column({ nullable: true, type: 'text' })
+  @Column({ nullable: true, type: 'varchar', length: 160 })
   bio?: string;
 
   @Column({ nullable: true, default: false })
