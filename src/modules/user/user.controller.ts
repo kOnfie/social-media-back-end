@@ -85,10 +85,18 @@ export class UserController {
   }
 
   @Get('/username/:username')
+  @ApiResponse({
+    status: 404,
+    description: 'User not found',
+    type: NotFoundResponseDto,
+  })
   async getUserByUsername(
     @Param('username') username: string,
   ): Promise<UserResponseDto> {
     const user = await this.userService.findUserByUsername(username);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
     return this.userPresenter.toResponse(user);
   }
 }
