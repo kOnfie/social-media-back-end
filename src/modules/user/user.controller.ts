@@ -98,7 +98,7 @@ export class UserController {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    const canView = await this.userService.canViewFullProfile(viewerId, user);
+    const canView = await this.userService.hasProfileAccess(viewerId, user);
     return canView
       ? this.userPresenter.toPublicResponse(user)
       : this.userPresenter.toPrivateResponse(user);

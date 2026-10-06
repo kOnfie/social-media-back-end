@@ -88,7 +88,7 @@ export class UserService {
     return this.userRepository.findOneBy({ username });
   }
 
-  async canViewFullProfile(viewerId: string, target: User): Promise<boolean> {
+  async hasProfileAccess(viewerId: string, target: User): Promise<boolean> {
     if (!target.isPrivate || target.id === viewerId) return true;
     const follow = await this.followService.getFollowByIds(viewerId, target.id);
     return follow?.status === FollowStatus.ACCEPTED;
