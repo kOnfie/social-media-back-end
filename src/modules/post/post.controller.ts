@@ -72,7 +72,9 @@ export class PostController {
 
   @Get('/feed')
   async getFeed(@CurrentUser('id') userId: string) {
-    await this.postService.getFeed(userId);
+    const posts = await this.postService.getFeed(userId);
+
+    return posts.map((post) => this.postPresenter.toResponse(post));
   }
 
   @Delete('/:postId')

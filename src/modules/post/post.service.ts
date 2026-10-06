@@ -4,12 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Post } from './entities/post.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserService } from '../user/user.service';
 import { FollowService } from '../follow/follow.service';
-import { FollowStatus } from '../follow/entities/follow.entity';
+import { Follow, FollowStatus } from '../follow/entities/follow.entity';
 
 import { UpdatePost } from './interfaces/update-post.type';
 
@@ -137,15 +137,17 @@ export class PostService {
   }
 
   async getFeed(userId: string) {
-    const myFollowee = await this.followService.getMyFollowees(userId);
-    const followeeIds = myFollowee.map((f) => f.followee.id);
-
-    console.log('followeeIds ->', JSON.stringify(followeeIds, null, 2));
-
-    const posts = await this.postRepository.find({
-      where: { user: { id: In(followeeIds) } },
-    });
-
-    console.log('posts ->', JSON.stringify(posts, null, 2));
+    return this.postRepository
+      .createQueryBuilder('post')
+      .innerJoin(
+        Follow,
+        'follow',
+        'follow.followee = post.user AND follow.follower = :userId AND follow.status = :status',
+        { userId, status: FollowStatus.ACCEPTED },
+      )
+      .innerJoinAndSelect('post.user', 'user')
+      .orderBy('post.createdAt', 'DESC')
+      .addOrderBy('post.id', 'ASC')
+      .getMany();
   }
 }

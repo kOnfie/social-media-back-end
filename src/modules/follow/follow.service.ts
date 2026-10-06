@@ -66,7 +66,6 @@ export class FollowService {
   ): Promise<Follow | null> {
     return this.followRepository.findOne({
       where: { followee: { id: followeeId }, follower: { id: followerId } },
-      relations: { follower: true, followee: true },
     });
   }
 
