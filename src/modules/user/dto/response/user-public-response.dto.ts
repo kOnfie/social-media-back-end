@@ -2,9 +2,6 @@ import { Expose } from 'class-transformer';
 
 export class UserPublicResponseDto {
   @Expose()
-  email!: string;
-
-  @Expose()
   username!: string;
 
   @Expose()
