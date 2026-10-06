@@ -5,16 +5,7 @@ export class UserPrivateResponseDto {
   username!: string;
 
   @Expose()
-  displayName!: string;
-
-  @Expose()
   avatarUrl!: string;
-
-  @Expose()
-  bio!: string;
-
-  @Expose()
-  isPrivate!: boolean;
 
   @Expose()
   followerCount!: number;
