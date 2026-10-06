@@ -55,7 +55,7 @@ Password reset and email verification both use short-lived, hashed (SHA-256) one
 
 **Mail is behind an interface**, not a concrete provider: `src/common/providers/mail/mail.interface.ts` defines `IMailProvider` + injection token `MAIL_PROVIDER_KEY`; `MailModule` binds it to `ResendMailProvider`. Inject mail via `@Inject(MAIL_PROVIDER_KEY) private mailProvider: IMailProvider` rather than importing the Resend provider directly, so the provider can be swapped later.
 
-**User responses go through a presenter, not the entity/DTO directly.** `UserService` returns raw `User` entities (TypeORM); `UserPresenter` (`src/modules/user/user.presenter.ts`) converts them to response DTOs via `plainToInstance(..., { excludeExtraneousValues: true })`, which relies on `@Expose()` in the DTOs to control the outbound shape. There are separate response DTOs for self (`UserResponseDto`), public profile (`UserPublicResponseDto`), and private profile (`UserPrivateResponseDto`) — `UserController.getPublicProfileById` branches on `user.isPrivate` to pick which one to render. Sensitive entity fields (`passwordHash`, `updatedAt`) are also marked `@Exclude()` on the entity itself as a second layer of protection. `UserController.getUserByUsername` (`GET /users/username/:username`) is a lookup-only endpoint alongside these; note it doesn't 404 on a missing user the way `getPublicProfileById` does.
+**User responses go through a presenter, not the entity/DTO directly.** `UserService` returns raw `User` entities (TypeORM); `UserPresenter` (`src/modules/user/user.presenter.ts`) converts them to response DTOs via `plainToInstance(..., { excludeExtraneousValues: true })`, which relies on `@Expose()` in the DTOs to control the outbound shape. There are separate response DTOs for self (`UserResponseDto`), public profile (`UserPublicResponseDto`), and private profile (`UserPrivateResponseDto`) — `UserController.getPublicProfileById` branches on `user.isPrivate` to pick which one to render. Sensitive entity fields (`passwordHash`, `updatedAt`) are also marked `@Exclude()` on the entity itself as a second layer of protection. `UserController.getUserByUsername` (`GET /users/username/:username`) is a lookup-only endpoint alongside these.
 
 **Swagger** is only mounted when `NODE_ENV === 'dev'` (`/api/docs`), built via `DocumentBuilder`. Controllers/DTOs use `@nestjs/swagger` decorators (`@ApiOperation`, `@ApiResponse`, `@ApiBody`) — follow the existing per-status-code DTO pattern (e.g. `dto/error-response/*`, `dto/signup/signup-conflict-response.dto.ts`) when documenting new endpoints rather than inline schemas.
 
@@ -67,7 +67,6 @@ Password reset and email verification both use short-lived, hashed (SHA-256) one
 
 ## Нагадування
 
-Навіть маючи повний контекст проєкту — дотримуйся правил ментора зверху.
 Знання архітектури потрібне щоб задавати точніші запитання, не щоб
 давати готові рішення.
 
