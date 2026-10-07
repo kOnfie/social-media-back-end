@@ -1,74 +1,29 @@
 ## Project overview
 
-NestJS (v11) REST API backend for a social media app. Postgres via TypeORM, Redis-backed cache (used for email verification / password reset codes), custom cookie-based session auth (no JWT), Resend for transactional email.
+NestJS (v11) REST API for a social media app. Postgres via TypeORM, Redis cache (verification / reset codes), custom cookie-based session auth (no JWT), Resend for email.
 
 ## Commands
 
-```bash
-# install
-npm install
-
-# run (dev, watch mode)
-npm run start:dev
-
-# build
-npm run build
-
-# lint (auto-fixes)
-npm run lint
-
-# format
-npm run format
-
-# unit tests (none exist yet, but jest is configured under src/**/*.spec.ts)
-npm run test
-npm run test:watch
-npm run test:cov
-# run a single test file
-npx jest path/to/file.spec.ts
-
-# e2e tests (config exists at test/jest-e2e.json; no test/ dir or specs exist yet)
-npm run test:e2e
-```
-
-Redis is required (used by `CacheModule`/`@keyv/redis`) and is started via:
-
-```bash
-docker-compose up -d redis
-```
-
-Postgres is expected to be running locally (`localhost:5432`, db `social_media_db`) — connection is currently hardcoded in `src/app.module.ts` (not read from env), except Redis and mail which use env vars.
+- `npm run lint` auto-fixes.
+- Single test: `npx jest path/to/file.spec.ts`.
+- Redis is required: `docker-compose up -d redis`.
 
 ## Environment variables
 
-Read via `.env` (`@nestjs/config`, loaded globally). Known keys: `PORT`, `NODE_ENV` (`dev` enables Swagger at `/api/docs`), `REDIS_PASSWORD`, `RESEND_API_KEY`, `SALT_ROUNDS`.
+Read from `.env` (not in git): `PORT`, `NODE_ENV` (`dev` enables Swagger at `/api/docs`), `REDIS_PASSWORD`, `RESEND_API_KEY`, `SALT_ROUNDS`.
 
 ## Architecture
 
-Standard Nest module-per-domain layout under `src/modules/`: `auth`, `user`, `session`, `follow`. Cross-cutting code lives in `src/common/` (guards, filters, http helpers, provider interfaces, utils).
+Module-per-domain under `src/modules/` (`auth`, `user`, `session`, `follow`); cross-cutting code in `src/common/`.
 
-**Global request pipeline** (`src/main.ts`): global prefix `api/v1`, `cookie-parser`, a global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform` all on — DTOs are the strict contract for every request body), and a global `AllExceptionsFilter` (`src/common/filters/all-exceptions.filter.ts`) that normalizes all errors to `{ statusCode, timestamp, path, data }` and maps common Postgres `QueryFailedError` codes (unique violation, FK violation, not-null violation) to 409/400 with Ukrainian messages.
-
-**Auth model — cookie sessions, not JWT.** `AuthService` issues an opaque random token (`crypto.randomBytes(32).toString('hex')`) stored in the `sessions` table (`SessionService`, 7-day expiry) and set as an httpOnly cookie named `sessionToken` (`AuthSessionCookies` service — `secure` flag is tied to `NODE_ENV === 'prod'`). `AuthGuard` (`src/common/guards/auth.guard.ts`) reads that cookie via `extractSessionToken`, looks up the session (with its `user` relation) via `SessionService.findValidSessionByToken`, and attaches the user to `request['user']` plus the raw token to `request['sessionToken']`. Protected controllers apply `@UseGuards(AuthGuard)` at the class level (see `UserController`); handlers pull the authenticated user via the `@CurrentUser()` param decorator (`src/modules/auth/decorators/current-user.decorator.ts`), optionally scoped to one field, e.g. `@CurrentUser('id')`.
-
-Password reset and email verification both use short-lived, hashed (SHA-256) one-time codes stored in the cache manager (Redis), never the DB — see `AuthService.saveVerificationCode`/`saveResetPasswordCode`/`verifyResetCode`. Password/session mutations that must be atomic (e.g. change/reset password + invalidate old sessions + issue a new session) go through `DataSource.transaction` directly in `AuthService` rather than through repository methods.
-
-**Mail is behind an interface**, not a concrete provider: `src/common/providers/mail/mail.interface.ts` defines `IMailProvider` + injection token `MAIL_PROVIDER_KEY`; `MailModule` binds it to `ResendMailProvider`. Inject mail via `@Inject(MAIL_PROVIDER_KEY) private mailProvider: IMailProvider` rather than importing the Resend provider directly, so the provider can be swapped later.
-
-**User responses go through a presenter, not the entity/DTO directly.** `UserService` returns raw `User` entities (TypeORM); `UserPresenter` (`src/modules/user/user.presenter.ts`) converts them to response DTOs via `plainToInstance(..., { excludeExtraneousValues: true })`, which relies on `@Expose()` in the DTOs to control the outbound shape. There are separate response DTOs for self (`UserResponseDto`), public profile (`UserPublicResponseDto`), and private profile (`UserPrivateResponseDto`) — `UserController.getPublicProfileById` branches on `user.isPrivate` to pick which one to render. Sensitive entity fields (`passwordHash`, `updatedAt`) are also marked `@Exclude()` on the entity itself as a second layer of protection. `UserController.getUserByUsername` (`GET /users/username/:username`) is a lookup-only endpoint alongside these.
-
-**Swagger** is only mounted when `NODE_ENV === 'dev'` (`/api/docs`), built via `DocumentBuilder`. Controllers/DTOs use `@nestjs/swagger` decorators (`@ApiOperation`, `@ApiResponse`, `@ApiBody`) — follow the existing per-status-code DTO pattern (e.g. `dto/error-response/*`, `dto/signup/signup-conflict-response.dto.ts`) when documenting new endpoints rather than inline schemas.
-
-**Entities/relations**: `User` (`src/modules/user/entities/user.entity.ts`) has `OneToMany` sessions, and self-referential following/followers relations (`OneToMany` to `Follow`, not a direct `ManyToMany`). `synchronize: true` is enabled on the TypeORM connection (`src/app.module.ts`), so entity changes apply to the local DB schema automatically on boot — no migrations exist.
-
-**Follow model — explicit join entity, not `@ManyToMany`.** `Follow` (`src/modules/follow/entities/follow.entity.ts`) has `ManyToOne` relations to `User` on both `follower` and `followee`, a `status` enum (`FollowStatus.PENDING`/`FollowStatus.ACCEPTED`, DB default `PENDING`), and a `@Unique(['followee', 'follower'])` constraint — this is the actual duplicate-follow guard (not app-level checks, which only give a nicer error message and are still racy on their own). `User.following`/`User.followers` are `OneToMany` to `Follow`, so navigating from a `User` to its follow relationships always goes through a `Follow` row first (`user.following[].followee`), not straight to another `User`.
-
-`FollowService.subscribe` branches on `followee.isPrivate`: public accounts get `status: ACCEPTED` immediately, private accounts default to `PENDING` and require the followee to call `confirmSubscription` (accept updates the row's status; reject deletes it, allowing the follower to re-request later). Ownership checks in `confirmSubscription` run *before* the status check and throw `ForbiddenException` (403) rather than `ConflictException`, specifically so a caller who isn't the request's `followee` can't infer the resource's state. `getMyFollowers`/`getMyFollowees` filter `status: ACCEPTED` — only `getPendingFollowRequests` returns `PENDING` rows. As with `UserPresenter`, follow responses go through `FollowPresenter`/`FollowResponseDto` (`@Type(() => UserResponseDto)` on the nested `follower`/`followee` fields is required for `class-transformer` to recurse into them) — never return a raw `Follow` entity from a controller, since `follower`/`followee` carry full `User` data including excluded fields that only `@Exclude()`/`@Expose()` filtering strips out.
-
-## Нагадування
-
-Знання архітектури потрібне щоб задавати точніші запитання, не щоб
-давати готові рішення.
+- **DTOs are the strict contract** for every request body (global `ValidationPipe` with `whitelist`, `forbidNonWhitelisted`, `transform`).
+- **Auth is cookie sessions, not JWT.** Protected controllers use `@UseGuards(AuthGuard)` at class level; handlers get the user via `@CurrentUser()` (optionally `@CurrentUser('id')`).
+- **Atomic password/session mutations** (change/reset password + invalidate sessions + issue new one) go through `DataSource.transaction` in `AuthService`, not repository methods.
+- **Mail is behind an interface:** inject `@Inject(MAIL_PROVIDER_KEY) private mailProvider: IMailProvider`, never the Resend provider directly.
+- **Never return raw `User` or `Follow` entities from a controller.** Go through `UserPresenter` / `FollowPresenter` (response DTOs with `@Expose()`); nested `follower`/`followee` need `@Type(() => UserResponseDto)` for `class-transformer` to recurse.
+- **Swagger:** document new endpoints with the per-status-code DTO pattern (`dto/error-response/*`, `dto/signup/signup-conflict-response.dto.ts`), not inline schemas.
+- **`synchronize: true`, no migrations** — entity changes alter the local DB schema on boot.
+- **Follow** uses an explicit join entity (not `@ManyToMany`). The `@Unique(['followee', 'follower'])` constraint is the real duplicate guard; app-level checks only give a nicer error and are still racy. In `confirmSubscription`, ownership checks run *before* the status check and throw 403 (not 409), so a non-owner can't infer the request's state. `getMyFollowers`/`getMyFollowees` filter `ACCEPTED`; only `getPendingFollowRequests` returns `PENDING`.
 
 ## Conventions to follow
 
