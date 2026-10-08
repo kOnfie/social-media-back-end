@@ -94,10 +94,11 @@ export class UserController {
     @Param('username') username: string,
     @CurrentUser('id') viewerId: string,
   ): Promise<UserPublicResponseDto | UserPrivateResponseDto> {
-    const user = await this.userService.findUserByUsername(username);
+    const user = await this.userService.getProfileByUsername(username);
     if (!user) {
       throw new NotFoundException('User not found');
     }
+
     const canView = await this.userService.hasProfileAccess(viewerId, user);
     return canView
       ? this.userPresenter.toPublicResponse(user)

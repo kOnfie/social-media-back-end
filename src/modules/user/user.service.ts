@@ -88,6 +88,22 @@ export class UserService {
     return this.userRepository.findOneBy({ username });
   }
 
+  async getProfileByUsername(username: string): Promise<ProfileDto | null> {
+    const user = await this.findUserByUsername(username);
+    if (!user) return null;
+
+    const [followerCount, followeeCount] = await Promise.all([
+      this.followService.countFollowers(user.id),
+      this.followService.countFollowees(user.id),
+    ]);
+
+    return {
+      ...user,
+      followerCount,
+      followeeCount,
+    };
+  }
+
   async hasProfileAccess(viewerId: string, target: User): Promise<boolean> {
     if (!target.isPrivate || target.id === viewerId) return true;
     const follow = await this.followService.getFollowByIds(viewerId, target.id);
