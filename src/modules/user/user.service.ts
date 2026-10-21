@@ -26,6 +26,14 @@ export class UserService {
     return this.userRepository.findOneBy({ email });
   }
 
+  async getUsers(limit: number, offset: number): Promise<User[] | null> {
+    return this.userRepository.find({
+      take: limit,
+      skip: (offset - 1) * limit,
+      order: { id: 'ASC' },
+    });
+  }
+
   async createUser(email: string, password: string): Promise<User> {
     const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(password, salt);

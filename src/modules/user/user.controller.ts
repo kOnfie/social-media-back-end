@@ -8,6 +8,7 @@ import {
   NotFoundException,
   Param,
   Patch,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
@@ -23,6 +24,7 @@ import { UserConflictResponseDto } from './dto/error-response/user-conflict-resp
 import { UserPublicResponseDto } from './dto/response/user-public-response.dto';
 import { NotFoundResponseDto } from './dto/error-response/not-found-response.dto';
 import { UserPrivateResponseDto } from './dto/response/user-private-response.dto';
+import { PaginationQueryDto } from './dto/queries/pagination-query.dto';
 
 @UseGuards(AuthGuard)
 @Controller('users')
@@ -31,6 +33,11 @@ export class UserController {
     private readonly userService: UserService,
     private readonly userPresenter: UserPresenter,
   ) {}
+
+  @Get('/')
+  getUsers(@Query() query: PaginationQueryDto) {
+    return this.userService.getUsers(query.limit, query.offset);
+  }
 
   @Get('/me')
   getMe(@CurrentUser() user: User): UserResponseDto {

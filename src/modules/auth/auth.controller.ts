@@ -35,7 +35,12 @@ import { VerifyUserResponseDto } from './dto/verify-email/verify-user-response.d
 import { ResendCodeResponseDto } from './dto/resend-code/resend-code-response.dto';
 import { LoginUserResponseDto } from './dto/login/login-user-response.dto';
 import { UserPresenter } from '../user/user.presenter';
+import { Throttle } from '@nestjs/throttler';
+import { LoginThrottleGuard } from './guards/login-throttle.guard';
 
+const THROTTLE_TTL = 60_000;
+
+@Throttle({ default: { limit: 5, ttl: THROTTLE_TTL } })
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
@@ -50,6 +55,7 @@ export class AuthController {
     return this.userPresenter.toResponse(user);
   }
 
+  @Throttle({ default: { limit: 3, ttl: THROTTLE_TTL } })
   @Post('/signup')
   @ApiOperation({
     summary: 'Signup user',
@@ -103,6 +109,8 @@ export class AuthController {
     return { user: formattedUser, message: 'Email verified successfully' };
   }
 
+  @UseGuards(LoginThrottleGuard)
+  @Throttle({ default: { limit: 3, ttl: THROTTLE_TTL } })
   @Post('/resend-verification-code')
   @HttpCode(200)
   @ApiOperation({
@@ -123,6 +131,8 @@ export class AuthController {
     return { message: 'Code sent if email exists' };
   }
 
+  @UseGuards(LoginThrottleGuard)
+  @Throttle({ default: { limit: 5, ttl: THROTTLE_TTL } })
   @Post('/login')
   @HttpCode(200)
   @ApiOperation({
@@ -168,6 +178,7 @@ export class AuthController {
     };
   }
 
+  @Throttle({ default: { limit: 3, ttl: THROTTLE_TTL } })
   @Post('/forgot-password')
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     await this.authService.forgotPassword(forgotPasswordDto);

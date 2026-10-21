@@ -8,7 +8,7 @@ import * as crypto from 'crypto';
 export class SessionService {
   constructor(
     @InjectRepository(Session)
-    private readonly sessionRespository: Repository<Session>,
+    private readonly sessionRepository: Repository<Session>,
   ) {}
 
   async createSession(userId: string): Promise<Session> {
@@ -19,19 +19,19 @@ export class SessionService {
     const expiredAt = new Date();
     expiredAt.setDate(expiredAt.getDate() + SESSION_DURATION_DAYS);
 
-    const session = this.sessionRespository.create({
+    const session = this.sessionRepository.create({
       token,
       expiredAt,
       user: { id: userId },
     });
 
-    return this.sessionRespository.save(session);
+    return this.sessionRepository.save(session);
   }
 
   async sessionIsValid(token: string): Promise<boolean> {
     const now = new Date();
 
-    const session = await this.sessionRespository.findOneBy({
+    const session = await this.sessionRepository.findOneBy({
       token,
       expiredAt: MoreThan(now),
     });
@@ -40,7 +40,7 @@ export class SessionService {
   }
 
   async findSessionByToken(token: string): Promise<Session | null> {
-    const session = await this.sessionRespository.findOneBy({ token });
+    const session = await this.sessionRepository.findOneBy({ token });
     if (!session) {
       throw new NotFoundException('Session not found');
     }
@@ -49,17 +49,19 @@ export class SessionService {
   }
 
   async findValidSessionByToken(token: string): Promise<Session | null> {
-    const session = await this.sessionRespository.findOne({
+    const sessionList = await this.sessionRepository.find({
       where: { token },
       relations: { user: true },
     });
+    const session = sessionList[0];
+
     if (!session) {
       return null;
     }
 
     const now = new Date();
     if (now.getTime() > session.expiredAt.getTime()) {
-      await this.sessionRespository.delete({ token });
+      await this.sessionRepository.delete({ token });
       return null;
     }
 
@@ -67,10 +69,10 @@ export class SessionService {
   }
 
   async deleteSessionByToken(token: string): Promise<void> {
-    await this.sessionRespository.delete({ token });
+    await this.sessionRepository.delete({ token });
   }
 
   async deleteAllSessions(userId: string) {
-    await this.sessionRespository.delete({ user: { id: userId } });
+    await this.sessionRepository.delete({ user: { id: userId } });
   }
 }

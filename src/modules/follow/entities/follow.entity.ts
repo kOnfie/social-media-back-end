@@ -3,6 +3,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   ManyToOne,
   PrimaryGeneratedColumn,
   Unique,
@@ -25,6 +26,7 @@ export class Follow {
   @CreateDateColumn()
   createdAt!: Date;
 
+  @Index()
   @ManyToOne(() => User, (user) => user.following, {
     onDelete: 'CASCADE',
   })

@@ -8,10 +8,11 @@ import { UserModule } from './modules/user/user.module';
 import { SessionModule } from './modules/session/session.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import KeyvRedis from '@keyv/redis';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { FollowModule } from './modules/follow/follow.module';
 import { PostModule } from './modules/post/post.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -24,7 +25,23 @@ import { PostModule } from './modules/post/post.module';
       username: 'denismatveev',
       database: 'social_media_db',
       autoLoadEntities: true,
-      synchronize: true,
+
+      // synchronize: true,
+
+      // every query in terminal
+      // logging: true,
+      // query in terminal when db return an error
+      logging: ['query', 'error'],
+      // query in terminal when execution time more then 200 ms
+      maxQueryExecutionTime: 100,
+
+      poolSize: 10,
+      extra: {
+        // request wait a 5s for a connection then get an error
+        connectionTimeoutMillis: 5000,
+        // if connection don't work 30s pool closed it
+        idleTimeoutMillis: 30000,
+      },
     }),
 
     CacheModule.register({
@@ -33,6 +50,8 @@ import { PostModule } from './modules/post/post.module';
       ],
       isGlobal: true,
     }),
+
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
 
     AuthModule,
     UserModule,
@@ -45,6 +64,10 @@ import { PostModule } from './modules/post/post.module';
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
     AppService,
   ],

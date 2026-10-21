@@ -6,6 +6,7 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  Scope,
   UnauthorizedException,
 } from '@nestjs/common';
 import { SignupUserDto } from './dto/signup/signup-user.dto';
@@ -36,6 +37,9 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 
+const MAX_VERIFICATION_ATTEMPTS = 5;
+const VERIFICATION_CODE_TTL = 600_000;
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -49,10 +53,16 @@ export class AuthService {
     private readonly dataSource: DataSource,
   ) {}
 
+  private attemptsKey(email: string): string {
+    return `verification-attempts:${email}`;
+  }
+
   private async saveVerificationCode(
     email: string,
-    ttl: number = 600_000,
+    ttl: number = VERIFICATION_CODE_TTL,
   ): Promise<number> {
+    await this.cacheManager.del(this.attemptsKey(email));
+
     const verificationCode = generateVerificationCode();
     const hashedCode = createHash('sha256')
       .update(String(verificationCode))
@@ -65,7 +75,7 @@ export class AuthService {
 
   private async saveResetPasswordCode(
     email: string,
-    ttl: number = 600_000,
+    ttl: number = VERIFICATION_CODE_TTL,
   ): Promise<number> {
     const code = generateVerificationCode();
     const hashCode = createHash('sha256').update(String(code)).digest('hex'); // ???
@@ -191,6 +201,21 @@ export class AuthService {
     const inputCodeHash = createHash('sha256').update(code).digest('hex');
 
     if (verificationCodeHash !== inputCodeHash) {
+      const attempts =
+        ((await this.cacheManager.get<number>(this.attemptsKey(email))) ?? 0) +
+        1;
+
+      if (attempts >= MAX_VERIFICATION_ATTEMPTS) {
+        await this.cacheManager.del(`verification:${email}`);
+        await this.cacheManager.del(this.attemptsKey(email));
+        throw new ConflictException('Too many attempts. Request a new code');
+      }
+
+      await this.cacheManager.set(
+        this.attemptsKey(email),
+        attempts,
+        VERIFICATION_CODE_TTL,
+      );
       throw new ConflictException('Code is invalid');
     }
 
@@ -198,6 +223,7 @@ export class AuthService {
       await this.userService.updateUserVerifyByEmail(email, true);
 
       await this.cacheManager.del(`verification:${email}`);
+      await this.cacheManager.del(this.attemptsKey(email));
     } catch (error) {
       this.logger.error(
         `[authService.verifyUser] Failed to update the user ${email}`,
