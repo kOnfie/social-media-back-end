@@ -1,24 +1,27 @@
 import {
   ConflictException,
   ForbiddenException,
-  forwardRef,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { In, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  Repository,
+  UpdateResult,
+} from 'typeorm';
 import { Follow, FollowStatus } from './entities/follow.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { UserService } from '../user/user.service';
 import { ConfirmFollowStatus } from './dto/confirm-subscription.dto';
+import { User } from '../user/entities/user.entity';
 
 @Injectable()
 export class FollowService {
   constructor(
     @InjectRepository(Follow)
     private readonly followRepository: Repository<Follow>,
-    @Inject(forwardRef(() => UserService))
-    private readonly userService: UserService,
+    private dataSource: DataSource,
   ) {}
 
   async countFollowers(userId: string): Promise<number> {
@@ -85,28 +88,35 @@ export class FollowService {
       throw new ConflictException('You cannot subscribe to yourself');
     }
 
-    const followeeExists = await this.userService.findById(followeeId);
-    if (!followeeExists) {
-      throw new ConflictException('User not found');
-    }
+    return this.dataSource.transaction(async (manager) => {
+      const followeeExists = await manager.findOne(User, {
+        where: { id: followeeId },
+        lock: { mode: 'pessimistic_read' },
+      });
+      if (!followeeExists) {
+        throw new ConflictException('User not found');
+      }
 
-    const alreadySubscribed = await this.getFollowByIds(userId, followeeId);
-    if (alreadySubscribed) {
-      throw new ConflictException('User already subscribed');
-    }
+      const alreadySubscribed = await manager.findOne(Follow, {
+        where: { followee: { id: followeeId }, follower: { id: userId } },
+      });
+      if (alreadySubscribed) {
+        throw new ConflictException('User already subscribed');
+      }
 
-    let follow: Follow;
-    if (followeeExists.isPrivate) {
-      follow = await this.createFollow(userId, followeeId);
-    } else {
-      follow = await this.createFollow(
-        userId,
-        followeeId,
-        FollowStatus.ACCEPTED,
-      );
-    }
+      const status = followeeExists.isPrivate
+        ? undefined
+        : FollowStatus.ACCEPTED;
 
-    return { ...follow, user: follow.followee };
+      const newFollow = manager.create(Follow, {
+        status,
+        followee: { id: followeeId },
+        follower: { id: userId },
+      });
+      const follow = await manager.save(Follow, newFollow);
+
+      return { ...follow, user: follow.followee };
+    });
   }
 
   async unSubscribe(userId: string, followeeId: string) {
@@ -185,5 +195,16 @@ export class FollowService {
       await this.deleteFollow(followId);
       return false;
     }
+  }
+
+  async acceptAllPending(
+    userId: string,
+    manager: EntityManager,
+  ): Promise<UpdateResult> {
+    return manager.update(
+      Follow,
+      { followee: { id: userId }, status: FollowStatus.PENDING },
+      { status: FollowStatus.ACCEPTED },
+    );
   }
 }

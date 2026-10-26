@@ -1,19 +1,20 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { User } from './entities/user.entity';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ProfileDto } from './dto/profile.dto';
 import { FollowService } from '../follow/follow.service';
 import { FollowStatus } from '../follow/entities/follow.entity';
+import { UpdateUserPrivacyDto } from './dto/update-user-privacy.dto';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User) private readonly userRepository: Repository<User>,
-    @Inject(forwardRef(() => FollowService))
     private followService: FollowService,
+    private dataSource: DataSource,
   ) {}
 
   async findById(id: string): Promise<User | null> {
@@ -56,6 +57,28 @@ export class UserService {
     this.userRepository.merge(user, updateUserDto);
 
     return this.userRepository.save(user);
+  }
+
+  async updateUserPrivacy(
+    userId: string,
+    updateUserPrivacyDto: UpdateUserPrivacyDto,
+  ): Promise<User | null> {
+    return this.dataSource.transaction(async (manager) => {
+      const user = await manager.findOne(User, { where: { id: userId } });
+      if (!user) return null;
+
+      const becamePublic =
+        user.isPrivate === true && updateUserPrivacyDto.isPrivate === false;
+
+      manager.merge(User, user, updateUserPrivacyDto);
+      const saved = await manager.save(user);
+
+      if (becamePublic) {
+        await this.followService.acceptAllPending(userId, manager);
+      }
+
+      return saved;
+    });
   }
 
   async updateUserPasswordHash(userId: string, passwordHash: string) {
