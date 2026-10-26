@@ -25,6 +25,7 @@ import { UserPublicResponseDto } from './dto/response/user-public-response.dto';
 import { NotFoundResponseDto } from './dto/error-response/not-found-response.dto';
 import { UserPrivateResponseDto } from './dto/response/user-private-response.dto';
 import { PaginationQueryDto } from './dto/queries/pagination-query.dto';
+import { UpdateUserPrivacyDto } from './dto/update-user-privacy.dto';
 
 @UseGuards(AuthGuard)
 @Controller('users')
@@ -49,7 +50,7 @@ export class UserController {
   @ApiBody({ type: UpdateUserDto })
   @ApiResponse({
     status: 409,
-    description: 'Conflict response, uset not found',
+    description: 'Conflict response, user not found',
     type: UserConflictResponseDto,
   })
   async updateMe(
@@ -57,6 +58,30 @@ export class UserController {
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
     const user = await this.userService.updateUser(userId, updateUserDto);
+
+    if (!user) {
+      throw new ConflictException('User not found');
+    }
+
+    return this.userPresenter.toResponse(user);
+  }
+
+  @Patch('/me/update/privacy')
+  @HttpCode(HttpStatus.OK)
+  @ApiBody({ type: UpdateUserPrivacyDto })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflict response, user not found',
+    type: UserConflictResponseDto,
+  })
+  async updatePrivacy(
+    @CurrentUser('id') userId: string,
+    @Body() updateUserPrivacyDto: UpdateUserPrivacyDto,
+  ) {
+    const user = await this.userService.updateUserPrivacy(
+      userId,
+      updateUserPrivacyDto,
+    );
 
     if (!user) {
       throw new ConflictException('User not found');

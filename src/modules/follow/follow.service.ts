@@ -6,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { In, Repository } from 'typeorm';
+import { EntityManager, In, Repository, UpdateResult } from 'typeorm';
 import { Follow, FollowStatus } from './entities/follow.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserService } from '../user/user.service';
@@ -185,5 +185,16 @@ export class FollowService {
       await this.deleteFollow(followId);
       return false;
     }
+  }
+
+  async acceptAllPending(
+    userId: string,
+    manager: EntityManager,
+  ): Promise<UpdateResult> {
+    return manager.update(
+      Follow,
+      { followee: { id: userId }, status: FollowStatus.PENDING },
+      { status: FollowStatus.ACCEPTED },
+    );
   }
 }
