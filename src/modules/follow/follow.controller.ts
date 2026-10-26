@@ -57,7 +57,7 @@ export class FollowController {
       this.followPresenter.toFollowerResponse(follower),
     );
 
-    return { followers: formattedFollowers };
+    return { count: formattedFollowers.length, followers: formattedFollowers };
   }
 
   @Get('/my-followees')
@@ -68,7 +68,7 @@ export class FollowController {
       this.followPresenter.toFolloweeResponse(followee),
     );
 
-    return { followees: formattedFollowees };
+    return { count: formattedFollowees.length, followees: formattedFollowees };
   }
 
   @Post('/confirm-subscription')
