@@ -6,7 +6,6 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
-  Scope,
   UnauthorizedException,
 } from '@nestjs/common';
 import { SignupUserDto } from './dto/signup/signup-user.dto';
@@ -169,23 +168,23 @@ export class AuthService {
   async loginUser(loginUserDto: LoginUserDto) {
     const { email, password } = loginUserDto;
 
-    const userExists = await this.userService.findByEmail(email);
+    const userExists =
+      await this.userService.findUserWithPasswordByEmail(email);
+
     if (!userExists || !userExists.isVerified) {
       throw new UnauthorizedException('Invalid email or password');
     }
+    const { passwordHash, ...user } = userExists;
 
-    const passwordIsCorrect = await bcrypt.compare(
-      password,
-      userExists.passwordHash,
-    );
+    const passwordIsCorrect = await bcrypt.compare(password, passwordHash);
 
     if (!passwordIsCorrect) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    const session = await this.sessionService.createSession(userExists.id);
+    const session = await this.sessionService.createSession(user.id);
 
-    return { user: userExists, token: session.token };
+    return { user: user, token: session.token };
   }
 
   async verifyUser(verifyUserDto: VerifyUserDto) {
@@ -280,7 +279,7 @@ export class AuthService {
       throw new BadRequestException('New password must be different');
     }
 
-    const user = await this.userService.findById(userId);
+    const user = await this.userService.findUserWithPasswordById(userId);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -375,15 +374,15 @@ export class AuthService {
       throw new BadRequestException('You need to do email verification');
     }
 
-    const user = await this.userService.findByEmail(email);
-    if (!user) {
+    const userWithPassword =
+      await this.userService.findUserWithPasswordByEmail(email);
+    if (!userWithPassword) {
       throw new BadRequestException('Invalid credentials');
     }
 
-    const passwordsAreMatch = await bcrypt.compare(
-      newPassword,
-      user.passwordHash,
-    );
+    const { passwordHash, ...user } = userWithPassword;
+
+    const passwordsAreMatch = await bcrypt.compare(newPassword, passwordHash);
     if (passwordsAreMatch) {
       throw new BadRequestException('Password cannot be the same');
     }

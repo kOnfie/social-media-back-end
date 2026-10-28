@@ -51,7 +51,9 @@ export class AuthController {
     private readonly userPresenter: UserPresenter,
   ) {}
 
-  private toUserResponse(user: User | null): UserResponseDto {
+  private toUserResponse(
+    user: Omit<User, 'passwordHash'> | null,
+  ): UserResponseDto {
     return this.userPresenter.toResponse(user);
   }
 

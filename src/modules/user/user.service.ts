@@ -17,6 +17,22 @@ export class UserService {
     private dataSource: DataSource,
   ) {}
 
+  async findUserWithPasswordByEmail(email: string): Promise<User | null> {
+    return this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.email = :email', { email })
+      .getOne();
+  }
+
+  async findUserWithPasswordById(userId: string): Promise<User | null> {
+    return this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.id = :userId', { userId })
+      .getOne();
+  }
+
   async findById(id: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { id },
