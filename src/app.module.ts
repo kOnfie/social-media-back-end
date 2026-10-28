@@ -20,20 +20,19 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'denismatveev',
-      database: 'social_media_db',
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT),
+      username: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
       autoLoadEntities: true,
-
-      // synchronize: true,
 
       // every query in terminal
       // logging: true,
-      // query in terminal when db return an error
+      // error: query in terminal when db return an error
       logging: ['query', 'error'],
       // query in terminal when execution time more then 200 ms
-      maxQueryExecutionTime: 100,
+      maxQueryExecutionTime: 200,
 
       poolSize: 10,
       extra: {
