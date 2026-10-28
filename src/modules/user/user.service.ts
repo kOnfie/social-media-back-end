@@ -27,10 +27,10 @@ export class UserService {
     return this.userRepository.findOneBy({ email });
   }
 
-  async getUsers(limit: number, offset: number): Promise<User[] | null> {
+  async getUsers(limit: number, page: number): Promise<User[] | null> {
     return this.userRepository.find({
       take: limit,
-      skip: (offset - 1) * limit,
+      skip: (page - 1) * limit,
       order: { id: 'ASC' },
     });
   }

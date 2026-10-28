@@ -37,7 +37,7 @@ export class UserController {
 
   @Get('/')
   getUsers(@Query() query: PaginationQueryDto) {
-    return this.userService.getUsers(query.limit, query.offset);
+    return this.userService.getUsers(query.limit, query.page);
   }
 
   @Get('/me')

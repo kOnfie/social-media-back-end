@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { PostService } from './post.service';
@@ -19,6 +20,8 @@ import { PostResponseDto } from './dto/responses/post-response.dto';
 import { User } from '../user/entities/user.entity';
 import { PostPresenter } from './post.presenter';
 import { UpdatePostDto } from './dto/update-post.dto';
+import { PaginationQueryFeedDto } from '../../common/dto/pagination-query-feed.dto';
+import { PostFeedResponseDto } from './dto/responses/post-feed-response.dto';
 
 @UseGuards(AuthGuard)
 @Controller('posts')
@@ -71,10 +74,24 @@ export class PostController {
   }
 
   @Get('/feed')
-  async getFeed(@CurrentUser('id') userId: string) {
-    const posts = await this.postService.getFeed(userId);
+  @HttpCode(HttpStatus.OK)
+  @ApiResponse({ status: 200, type: PostFeedResponseDto })
+  async getFeed(
+    @CurrentUser('id') userId: string,
+    @Query() queryDto: PaginationQueryFeedDto,
+  ): Promise<PostFeedResponseDto> {
+    const { limit, cursorCreatedAt, cursorId } = queryDto;
+    const { posts, nextCursor } = await this.postService.getFeed(
+      userId,
+      limit,
+      cursorCreatedAt,
+      cursorId,
+    );
 
-    return posts.map((post) => this.postPresenter.toResponse(post));
+    return {
+      nextCursor,
+      posts: posts.map((post) => this.postPresenter.toResponse(post)),
+    };
   }
 
   @Delete('/:postId')
