@@ -8,7 +8,7 @@ import { ProfileDto } from './dto/profile.dto';
 
 @Injectable()
 export class UserPresenter {
-  toResponse(user: User | null): UserResponseDto {
+  toResponse(user: Omit<User, 'passwordHash'> | null): UserResponseDto {
     return plainToInstance(UserResponseDto, user, {
       excludeExtraneousValues: true,
     });
