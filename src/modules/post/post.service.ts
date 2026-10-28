@@ -136,8 +136,13 @@ export class PostService {
     return updatedPost;
   }
 
-  async getFeed(userId: string) {
-    return this.postRepository
+  async getFeed(
+    userId: string,
+    limit: number,
+    cursorCreatedAt: Date | undefined,
+    cursorId: string | undefined,
+  ) {
+    const query = this.postRepository
       .createQueryBuilder('post')
       .innerJoin(
         Follow,
@@ -147,7 +152,32 @@ export class PostService {
       )
       .innerJoinAndSelect('post.user', 'user')
       .orderBy('post.createdAt', 'DESC')
-      .addOrderBy('post.id', 'ASC')
-      .getMany();
+      .addOrderBy('post.id', 'DESC')
+      .take(limit + 1);
+
+    if (cursorCreatedAt && cursorId) {
+      query.andWhere(
+        '(post.createdAt, post.id) < (:cursorCreatedAt, :cursorId)',
+        {
+          cursorCreatedAt,
+          cursorId,
+        },
+      );
+    }
+
+    const posts = await query.getMany();
+
+    let nextCursor: { id: string; createdAt: Date } | null = null;
+
+    if (posts.length > limit) {
+      posts.pop();
+
+      nextCursor = {
+        id: posts[posts.length - 1].id,
+        createdAt: posts[posts.length - 1].createdAt,
+      };
+    }
+
+    return { posts, nextCursor };
   }
 }

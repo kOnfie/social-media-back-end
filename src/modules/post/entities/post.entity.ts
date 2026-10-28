@@ -22,7 +22,7 @@ export class Post {
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ precision: 3 })
   createdAt!: Date;
 
   @ManyToOne(() => User, (user) => user.posts, { onDelete: 'CASCADE' })
