@@ -13,5 +13,5 @@ export class PaginationQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  offset: number = 1;
+  page: number = 1;
 }
