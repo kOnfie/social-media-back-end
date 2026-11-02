@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserModule } from './modules/user/user.module';
 import { SessionModule } from './modules/session/session.module';
@@ -43,11 +43,22 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
       },
     }),
 
-    CacheModule.register({
-      stores: [
-        new KeyvRedis(`redis://:${process.env.REDIS_PASSWORD}@localhost:6379`),
-      ],
+    CacheModule.registerAsync({
       isGlobal: true,
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => {
+        const store = new KeyvRedis(config.get<string>('REDIS_URL'), {
+          connectionTimeout: 3000,
+        });
+
+        try {
+          await store.set('health-check', 'ok', 1000);
+        } catch (error) {
+          throw new Error('Redis not available', { cause: error });
+        }
+
+        return { stores: [store] };
+      },
     }),
 
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
