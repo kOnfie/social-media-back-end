@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -17,7 +18,6 @@ import { AuthGuard } from 'src/common/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PostResponseDto } from './dto/responses/post-response.dto';
-import { User } from '../user/entities/user.entity';
 import { PostPresenter } from './post.presenter';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PaginationQueryFeedDto } from '../../common/dto/pagination-query-feed.dto';
@@ -39,21 +39,23 @@ export class PostController {
     type: PostResponseDto,
   })
   async create(
-    @CurrentUser() user: User,
+    @CurrentUser() userId: string,
     @Body() createPostDto: CreatePostDto,
   ) {
     const { text, photoUrl } = createPostDto;
 
-    const post = await this.postService.create(text, user.id, photoUrl);
-    const formattedPostWithUser = { ...post, user };
+    const post = await this.postService.create(text, userId, photoUrl);
+    if (!post) {
+      throw new NotFoundException('User not found');
+    }
 
-    return this.postPresenter.toResponse(formattedPostWithUser);
+    return this.postPresenter.toResponse(post);
   }
 
   @Get('/by-user/:userId')
   @HttpCode(HttpStatus.OK)
   async getUserPosts(
-    @CurrentUser('id') myId: string,
+    @CurrentUser() myId: string,
     @Param('userId') userId: string,
   ) {
     const posts = await this.postService.getSomeonePosts(myId, userId);
@@ -67,7 +69,7 @@ export class PostController {
 
   @Get('/my')
   @HttpCode(HttpStatus.OK)
-  async getMyPosts(@CurrentUser('id') userId: string) {
+  async getMyPosts(@CurrentUser() userId: string) {
     const posts = await this.postService.findByUserId(userId);
 
     return posts.map((post) => this.postPresenter.toResponse(post));
@@ -77,7 +79,7 @@ export class PostController {
   @HttpCode(HttpStatus.OK)
   @ApiResponse({ status: 200, type: PostFeedResponseDto })
   async getFeed(
-    @CurrentUser('id') userId: string,
+    @CurrentUser() userId: string,
     @Query() queryDto: PaginationQueryFeedDto,
   ): Promise<PostFeedResponseDto> {
     const { limit, cursorCreatedAt, cursorId } = queryDto;
@@ -95,10 +97,7 @@ export class PostController {
   }
 
   @Delete('/:postId')
-  async delete(
-    @CurrentUser('id') userId: string,
-    @Param('postId') postId: string,
-  ) {
+  async delete(@CurrentUser() userId: string, @Param('postId') postId: string) {
     await this.postService.delete(userId, postId);
 
     return { message: 'Post deleted successfully' };
@@ -106,7 +105,7 @@ export class PostController {
 
   @Get('/:postId')
   async getSinglePost(
-    @CurrentUser('id') userId: string,
+    @CurrentUser() userId: string,
     @Param('postId') postId: string,
   ) {
     const post = await this.postService.getSinglePost(postId, userId);
@@ -122,7 +121,7 @@ export class PostController {
     description: 'Update post by postId',
   })
   async updatePost(
-    @CurrentUser('id') userId: string,
+    @CurrentUser() userId: string,
     @Param('postId') postId: string,
     @Body() updatePostDto: UpdatePostDto,
   ) {

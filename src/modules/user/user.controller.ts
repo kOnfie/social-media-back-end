@@ -14,7 +14,6 @@ import {
 import { UserService } from './user.service';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from './entities/user.entity';
 import { UserPresenter } from './user.presenter';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -41,7 +40,17 @@ export class UserController {
   }
 
   @Get('/me')
-  getMe(@CurrentUser() user: User): UserResponseDto {
+  @ApiResponse({
+    status: 404,
+    description: 'User not found',
+    type: NotFoundResponseDto,
+  })
+  async getMe(@CurrentUser() userId: string): Promise<UserResponseDto> {
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     return this.userPresenter.toResponse(user);
   }
 
@@ -54,7 +63,7 @@ export class UserController {
     type: UserConflictResponseDto,
   })
   async updateMe(
-    @CurrentUser('id') userId: string,
+    @CurrentUser() userId: string,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
     const user = await this.userService.updateUser(userId, updateUserDto);
@@ -75,7 +84,7 @@ export class UserController {
     type: UserConflictResponseDto,
   })
   async updatePrivacy(
-    @CurrentUser('id') userId: string,
+    @CurrentUser() userId: string,
     @Body() updateUserPrivacyDto: UpdateUserPrivacyDto,
   ) {
     const user = await this.userService.updateUserPrivacy(
@@ -124,7 +133,7 @@ export class UserController {
   })
   async getUserByUsername(
     @Param('username') username: string,
-    @CurrentUser('id') viewerId: string,
+    @CurrentUser() viewerId: string,
   ): Promise<UserPublicResponseDto | UserPrivateResponseDto> {
     const user = await this.userService.getProfileByUsername(username);
     if (!user) {

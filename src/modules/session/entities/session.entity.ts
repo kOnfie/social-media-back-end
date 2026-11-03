@@ -5,6 +5,7 @@ import {
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
+  RelationId,
 } from 'typeorm';
 
 @Entity('sessions')
@@ -19,6 +20,9 @@ export class Session {
     onDelete: 'CASCADE',
   })
   user!: User;
+
+  @RelationId((session: Session) => session.user)
+  userId!: string;
 
   @Column({ type: 'timestamptz', nullable: true })
   expiredAt!: Date;

@@ -54,11 +54,14 @@ export class PostService {
     });
   }
 
-  create(text: string, ownerId: string, photoUrl?: string) {
+  async create(text: string, ownerId: string, photoUrl?: string) {
+    const user = await this.userService.findById(ownerId);
+    if (!user) return null;
+
     const post = this.postRepository.create({
       text,
       photoUrl,
-      user: { id: ownerId },
+      user,
     });
 
     return this.postRepository.save(post);

@@ -26,7 +26,7 @@ export class FollowController {
   @Post('/subscribe')
   @HttpCode(200)
   async subscribe(
-    @CurrentUser('id') userId: string,
+    @CurrentUser() userId: string,
     @Body() subscribeDto: SubscribeDto,
   ) {
     const { userId: followeeId } = subscribeDto;
@@ -42,7 +42,7 @@ export class FollowController {
   @Post('/unsubscribe')
   @HttpCode(200)
   async unSubscribe(
-    @CurrentUser('id') userId: string,
+    @CurrentUser() userId: string,
     @Body() subscribeDto: SubscribeDto,
   ) {
     await this.followService.unSubscribe(userId, subscribeDto.userId);
@@ -51,7 +51,7 @@ export class FollowController {
   }
 
   @Get('/my-followers')
-  async myFollowers(@CurrentUser('id') userId: string) {
+  async myFollowers(@CurrentUser() userId: string) {
     const followers = await this.followService.getMyFollowers(userId);
     const formattedFollowers = followers.map((follower) =>
       this.followPresenter.toFollowerResponse(follower),
@@ -62,7 +62,7 @@ export class FollowController {
 
   @Get('/my-followees')
   @HttpCode(200)
-  async myFollowee(@CurrentUser('id') userId: string) {
+  async myFollowee(@CurrentUser() userId: string) {
     const followees = await this.followService.getMyFollowees(userId);
     const formattedFollowees = followees.map((followee) =>
       this.followPresenter.toFolloweeResponse(followee),
@@ -74,7 +74,7 @@ export class FollowController {
   @Post('/confirm-subscription')
   @HttpCode(200)
   async confirmSubscription(
-    @CurrentUser('id') userId: string,
+    @CurrentUser() userId: string,
     @Body() confirmSubscriptionDto: ConfirmSubscriptionDto,
   ) {
     const { followId, status } = confirmSubscriptionDto;
@@ -93,7 +93,7 @@ export class FollowController {
 
   @Get('/my-pending-requests')
   @HttpCode(200)
-  async getPendingFollowRequests(@CurrentUser('id') userId: string) {
+  async getPendingFollowRequests(@CurrentUser() userId: string) {
     const subscriptions =
       await this.followService.getPendingFollowRequests(userId);
     const formattedSubscriptions = subscriptions.map((sub) =>

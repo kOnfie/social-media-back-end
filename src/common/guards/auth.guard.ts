@@ -30,7 +30,7 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Session expired or invalid');
     }
 
-    request['user'] = session.user;
+    request['userId'] = session.userId;
     request['sessionToken'] = sessionToken;
 
     return true;
