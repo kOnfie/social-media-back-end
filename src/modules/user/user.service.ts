@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { User } from './entities/user.entity';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -8,6 +8,7 @@ import { ProfileDto } from './dto/profile.dto';
 import { FollowService } from '../follow/follow.service';
 import { FollowStatus } from '../follow/entities/follow.entity';
 import { UpdateUserPrivacyDto } from './dto/update-user-privacy.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService {
@@ -15,6 +16,7 @@ export class UserService {
     @InjectRepository(User) private readonly userRepository: Repository<User>,
     private followService: FollowService,
     private dataSource: DataSource,
+    private configService: ConfigService,
   ) {}
 
   async findUserWithPasswordByEmail(email: string): Promise<User | null> {
@@ -155,5 +157,24 @@ export class UserService {
     if (!target.isPrivate || target.id === viewerId) return true;
     const follow = await this.followService.getFollowByIds(viewerId, target.id);
     return follow?.status === FollowStatus.ACCEPTED;
+  }
+
+  async updateUserPasswordHashInTransaction(
+    manager: EntityManager,
+    userId: string,
+    newPassword: string,
+  ) {
+    const saltRounds = Number(
+      this.configService.get<number>('SALT_ROUNDS') ?? 12,
+    );
+    const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+
+    await manager.update(
+      User,
+      {
+        id: userId,
+      },
+      { passwordHash: newPasswordHash },
+    );
   }
 }

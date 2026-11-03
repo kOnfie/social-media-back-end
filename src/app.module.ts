@@ -13,6 +13,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { FollowModule } from './modules/follow/follow.module';
 import { PostModule } from './modules/post/post.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -62,6 +63,15 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
     }),
 
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
+
+    JwtModule.registerAsync({
+      global: true,
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      }),
+    }),
 
     AuthModule,
     UserModule,

@@ -164,12 +164,12 @@ export class AuthController {
   @Post('/change-password')
   async changePassword(
     @Res({ passthrough: true }) res: Response,
-    @CurrentUser() user: User,
+    @CurrentUser() userId: string,
     @Body() changePasswordDto: ChangePasswordDto,
   ) {
-    const session = await this.authService.changePassword(
+    const { session, user } = await this.authService.changePassword(
       changePasswordDto,
-      user.id,
+      userId,
     );
 
     this.authSessionCookies.setSessionCookie(res, session.token);

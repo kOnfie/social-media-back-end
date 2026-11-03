@@ -17,7 +17,7 @@ Read from `.env` (not in git): `PORT`, `NODE_ENV` (`dev` enables Swagger at `/ap
 Module-per-domain under `src/modules/` (`auth`, `user`, `session`, `follow`); cross-cutting code in `src/common/`.
 
 - **DTOs are the strict contract** for every request body (global `ValidationPipe` with `whitelist`, `forbidNonWhitelisted`, `transform`).
-- **Auth is cookie sessions, not JWT.** Protected controllers use `@UseGuards(AuthGuard)` at class level; handlers get the user via `@CurrentUser()` (optionally `@CurrentUser('id')`).
+- **Auth is cookie sessions, not JWT.** Protected controllers use `@UseGuards(AuthGuard)` at class level; handlers get only the user's id via `@CurrentUser()` (a `string`). The guard does not load the `User`; handlers that need the full user fetch it themselves (e.g. `UserService.findById`). Redis caches sessions as `{ userId, expiredAt }` only.
 - **Atomic password/session mutations** (change/reset password + invalidate sessions + issue new one) go through `DataSource.transaction` in `AuthService`, not repository methods.
 - **Mail is behind an interface:** inject `@Inject(MAIL_PROVIDER_KEY) private mailProvider: IMailProvider`, never the Resend provider directly.
 - **Never return raw `User` or `Follow` entities from a controller.** Go through `UserPresenter` / `FollowPresenter` (response DTOs with `@Expose()`); nested `follower`/`followee` need `@Type(() => UserResponseDto)` for `class-transformer` to recurse.

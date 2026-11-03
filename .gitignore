@@ -58,3 +58,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # TZ file
 social-network-TZ.md
 social-network-spec.md
+
+# local session cookies
+cookies.txt

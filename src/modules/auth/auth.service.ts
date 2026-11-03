@@ -188,13 +188,26 @@ export class AuthService {
   }
 
   async verifyUser(verifyUserDto: VerifyUserDto) {
-    const { email, code } = verifyUserDto;
+    const { email, code, password } = verifyUserDto;
 
     const verificationCodeHash = await this.cacheManager.get(
       `verification:${email}`,
     );
     if (!verificationCodeHash) {
       throw new ConflictException('Code has expired');
+    }
+
+    const user = await this.userService.findUserWithPasswordByEmail(email);
+    if (!user) {
+      this.logger.error(
+        `[authService.verifyUserEmail] User not found by email ${email}`,
+      );
+      throw new NotFoundException('User not found');
+    }
+
+    const passwordIsCorrect = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordIsCorrect) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const inputCodeHash = createHash('sha256').update(code).digest('hex');
@@ -231,14 +244,6 @@ export class AuthService {
       throw new InternalServerErrorException('Failed to updated the user');
     }
 
-    const user = await this.userService.findByEmail(email);
-    if (!user) {
-      this.logger.error(
-        `[authService.verifyUserEmail] User not found by email ${email}`,
-      );
-      throw new InternalServerErrorException('User not found');
-    }
-
     const session = await this.sessionService.createSession(user?.id);
 
     return { user, token: session.token };
@@ -272,55 +277,57 @@ export class AuthService {
   async changePassword(
     changePasswordDto: ChangePasswordDto,
     userId: string,
-  ): Promise<Session> {
+  ): Promise<{ session: Session; user: Omit<User, 'passwordHash'> }> {
     const { password, newPassword } = changePasswordDto;
 
     if (password === newPassword) {
       throw new BadRequestException('New password must be different');
     }
 
-    const user = await this.userService.findUserWithPasswordById(userId);
-    if (!user) {
+    const userWithPassword =
+      await this.userService.findUserWithPasswordById(userId);
+    if (!userWithPassword) {
       throw new UnauthorizedException('Invalid credentials');
     }
+    const { passwordHash, ...user } = userWithPassword;
 
-    const passwordsHaveMatch = await bcrypt.compare(
-      password,
-      user.passwordHash,
-    );
+    const passwordsHaveMatch = await bcrypt.compare(password, passwordHash);
     if (!passwordsHaveMatch) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const saltRounds = Number(
-      this.configService.get<number>('SALT_ROUNDS') ?? 12,
+    const { savedSession, deletedTokens } = await this.dataSource.transaction(
+      async (manager) => {
+        await this.userService.updateUserPasswordHashInTransaction(
+          manager,
+          userId,
+          newPassword,
+        );
+
+        const deletedTokens =
+          await this.sessionService.deleteAllSessionsInTransaction(
+            manager,
+            userId,
+          );
+
+        const session = await this.sessionService.createSessionInTransaction(
+          manager,
+          userId,
+        );
+
+        const savedSession = await manager.save(Session, session);
+
+        return { savedSession, deletedTokens };
+      },
     );
 
-    const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+    try {
+      await this.sessionService.deleteAllSessionsFromCache(deletedTokens);
+    } catch (error) {
+      this.logger.error('AuthService [changePassword] cache error:', error);
+    }
 
-    const token = crypto.randomBytes(32).toString('hex');
-
-    const SESSION_DURATION_DAYS = 7;
-    const expiredAt = new Date();
-    expiredAt.setDate(expiredAt.getDate() + SESSION_DURATION_DAYS);
-
-    return this.dataSource.transaction(async (manager) => {
-      await manager.update(
-        User,
-        { id: userId },
-        { passwordHash: newPasswordHash },
-      );
-
-      await manager.delete(Session, { user: { id: userId } });
-
-      const session = manager.create(Session, {
-        token,
-        expiredAt,
-        user: { id: userId },
-      });
-
-      return manager.save(Session, session);
-    });
+    return { session: savedSession, user };
   }
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<void> {
@@ -339,7 +346,7 @@ export class AuthService {
       `reset-password-code:${email}`,
     );
     if (!savedHashCode) {
-      throw new NotFoundException('Code expired or not exitst');
+      throw new NotFoundException('Code expired or not exists');
     }
     await this.cacheManager.del(`reset-password-code:${email}`);
 
@@ -381,42 +388,53 @@ export class AuthService {
     }
 
     const { passwordHash, ...user } = userWithPassword;
+    const userId = user.id;
 
     const passwordsAreMatch = await bcrypt.compare(newPassword, passwordHash);
     if (passwordsAreMatch) {
       throw new BadRequestException('Password cannot be the same');
     }
 
-    const newPasswordHash = await bcrypt.hash(newPassword, 12);
+    const { savedSession, deletedTokens } = await this.dataSource.transaction(
+      async (manager) => {
+        await this.userService.updateUserPasswordHashInTransaction(
+          manager,
+          userId,
+          newPassword,
+        );
 
-    const token = crypto.randomBytes(32).toString('hex');
+        const deletedTokens =
+          await this.sessionService.deleteAllSessionsInTransaction(
+            manager,
+            userId,
+          );
 
-    const SESSION_DURATION_DAYS = 7;
-    const expiredAt = new Date();
-    expiredAt.setDate(expiredAt.getDate() + SESSION_DURATION_DAYS);
+        const session = await this.sessionService.createSessionInTransaction(
+          manager,
+          userId,
+        );
 
-    const newSession = await this.dataSource.transaction(async (manager) => {
-      await manager.update(
-        User,
-        {
-          id: user.id,
-        },
-        { passwordHash: newPasswordHash },
-      );
+        const savedSession = await manager.save(Session, session);
 
-      await manager.delete(Session, { user: { id: user.id } });
+        return { savedSession, deletedTokens };
+      },
+    );
 
-      const session = manager.create(Session, {
-        token,
-        expiredAt,
-        user: { id: user.id },
-      });
-      return await manager.save(Session, session);
-    });
+    const results = await Promise.allSettled([
+      this.cacheManager.del(`reset-password-token:${email}`),
+      this.sessionService.deleteAllSessionsFromCache(deletedTokens),
+    ]);
 
-    await this.cacheManager.del(`reset-password-token:${email}`);
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        this.logger.error(
+          'AuthService [resetPassword] cache error:',
+          result.reason,
+        );
+      }
+    }
 
-    return { token: newSession.token, user };
+    return { token: savedSession.token, user };
   }
 
   async logout(token: string) {
